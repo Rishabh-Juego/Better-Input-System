@@ -1,0 +1,18 @@
+    [Header("Ground Check")]
+    [SerializeField] private float rayLength;
+    [SerializeField] private Transform leftPoint;
+    [SerializeField] private Transform rightPoint;
+    [SerializeField] private LayerMask detectLayer;
+    private bool grounded;
+
+
+ private void GroundCheck()
+    {
+        
+        RaycastHit2D hitLeft = Physics2D.Raycast(leftPoint.position, Vector2.down, rayLength, detectLayer);
+        RaycastHit2D hitRight= Physics2D.Raycast(rightPoint.position, Vector2.down, rayLength, detectLayer);
+        if (hitLeft || hitRight)
+            grounded = true;
+        else
+            grounded= false;
+    }

@@ -1,7 +1,7 @@
 # Better-Input-System  
 Project to try and capture complete new input system  
 
-#### General info  
+## General info  
 New input system for better key bidings in games  
 Unity input system can be added by using the id: `com.unity.inputsystem`  
 Corresponding setting can be foubd in **Edit** > **Project Settings** > **Player** > **Other Settings** > **Active Input Handling**. If you change this setting you must restart the Editor for it to take effect.  
@@ -20,7 +20,7 @@ There are [3 ways](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.17/
 	- script does not need code between input system and your methods
 	- useful for work with *key rebinding format*
 
-##### Directly reading Device States
+### Directly reading Device States
 This is good for scenarios where you have only on way of getting the input and only on one platform.
 We directly access the keyboard or gamepad reference and then try to fetch individual keys and axis values for calculations.
 This means, to change an input key binding, we will have to manually go to the script and make changes, this is prone to errors in complex setup.
@@ -30,7 +30,8 @@ For input sources like GamePad, we can check the deadzone of the axis to avoid u
 This setting is found here: **Project Settings** > **Input System Package** > **Settings** > **Default Deadzone Min/Max**.  
 We can chang it by crating an asset : **Project Settings** > **Input System Package** > **Settings** > **Create settings asset**
 
-##### Using Actions  
+### Using Actions
+#### Using Embedded Actions
 This allows a user to create key bindings in the inspector, and the script only holds reference to the result value type. This is ideal if you have a single input Handler script and want to define all input bindings in one place.
 This system focuses on defining the type of input action we want to perform, and then binding multiple keys to the action for different platforms. In case of a change needed in future, the bindings can be updated without effecting the code.
 
@@ -62,7 +63,50 @@ The `InputAction.CallbackContext` is only valid during the callback, so if you w
 
 See [`EmbeddedWorkflow.cs`](Assets/NewInputSystemLearning/UsingActions/Scripts/EmbeddedWorkflow.cs) for an example of this type of setup.
 
+Using Embedded Actions is good for scenarios where you have a fixed input handler and do not need to read inputs from multiple scripts.  
+But if you want multiple scripts to read inputs, or want to have a more modular input system, you can use Input Action Assets.
 
+##### Using Input Action Assets
+Input Action Assets are assets that hold input actions and their bindings. The scripts can then use the reference to this asset to read input values. This is useful for modular input systems where multiple scripts need to read inputs.  
+We can also create multiple action maps in the asset to group related actions together. For example, we can have a "Player" action map for player controls and a "UI" action map for UI controls. This allows us to enable/disable entire action maps based on the game state.  
+This also enables us to have different control schemes for different platforms, like keyboard and mouse for PC and gamepad for consoles which we can swap between as needed.  
+<br/><br/>
+The 'Input Action' Asset has 3 sections:
+- **Action Maps**: Group of related actions, like player controls, UI controls, etc
+  - Can be enabled/disabled as a whole 
+  - for example playerCar, playerNormal, playerInWater, etc
+- **Actions**: Individual actions that can be performed, 
+  - for example jump, move, shoot, etc
+- Third Panel:
+  - **Action Properties**: Properties of the selected action
+    - Shows what action is selected and its properties
+  - **Bindings**: Keys or buttons that trigger the actions 
+    - can be multiple bindings for a single action from multiple devices or input sources.
+    - for example WASD keys for move action, Space key for jump action, etc
 
+When we select an 'action' in the Input Action Asset, we can see its properties in the *Action Properties* panel.  
+In the Action Properpies panel, we can set the action type, control type(except button action type), interactions, processors, etc. which defines what types of bindings will be available to us.  
+By default, we had 'Button' so we get button action type of bindings.
+![img.png](Images/ActionProperties.png)
 
+Control Schemes:  
+All key bindings can belong to Control Schemes, which allows us to group bindings for different devices or input sources.  
+The idea is that if a hardware is needed but not present, the input system can automatically ignore those bindings. This also helps when your UI shows the keys to press for action, like "press [E] to interact" or "press [X] to interact" depending n keyboard or Gamepad in use so Control scheme recognises the devices being used and can automatically change the key shown based on the current control scheme.
+
+##### Using Input Action Assets in Script
+To use Input Action Assets in script, we first need to create a reference to the asset in the script.  
+This can be done by creating a public variable of type `InputActionAsset`
+Each map, action, and binding in the asset can be accessed using their names or IDs.   
+So, we can use 
+- `InputActionMap` variables to store Action Map reference that are defined in the asset (`InputActionAsset.FindActionMap("<action map name>")`)  
+- `InputAction` variables to store Action reference that are defined in any action map(`InputActionMap.FindAction("<action name>")`)  
+Similarly, 
+- we can enable/disable a complete `InputActionAsset` instead of enabling individual actions or action maps by calling `InputActionAsset.Enable()`  
+- we can enable/disable a complete `InputActionMap` instead of enabling individual actions by calling `InputActionMap.Enable()`  
+
+As the names of the action maps and actions are strings, it is prone to errors if we make a typo. To avoid this, we can use the generated C# class for the Input Action Asset.  
+Select your Input Action Asset in the Project window, and in the Inspector window, check the "Generate C# Class" option and click on "Apply". This will generate a C# class that contains all the action maps and actions as properties.  
+Now we can use the generated class in our script to access the action maps and actions without worrying about typos.
+![img.png](Images/generateInputActionClass.png)  
+We also do not need to worry about updates, as updating the Input Action Asset will automatically update the generated class.
 

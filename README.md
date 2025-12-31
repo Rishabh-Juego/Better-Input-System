@@ -110,3 +110,5 @@ Now we can use the generated class in our script to access the action maps and a
 ![img.png](Images/generateInputActionClass.png)  
 We also do not need to worry about updates, as updating the Input Action Asset will automatically update the generated class.
 
+See [`UsingInputActionAssetCode.cs`](Assets/NewInputSystemLearning/UsingInputActionAsset/Scripts/UsingInputActionAssetCode.cs) for an example of this type of setup.
+

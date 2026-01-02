@@ -24,7 +24,7 @@ There are [3 ways](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.17/
 This is good for scenarios where you have only on way of getting the input and only on one platform.
 We directly access the keyboard or gamepad reference and then try to fetch individual keys and axis values for calculations.
 This means, to change an input key binding, we will have to manually go to the script and make changes, this is prone to errors in complex setup.
-See [`DirectSyntax.cs`](Assets/NewInputSystemLearning/DirectReadingDeviceStates/Scripts/DirectSyntax.cs) for an example of this type of setup.
+See [`DirectSyntax.cs`](Assets/NewInputSystemLearning/01_DirectReadingDeviceStates/Scripts/DirectSyntax.cs) for an example of this type of setup.
 
 For input sources like GamePad, we can check the deadzone of the axis to avoid unwanted movements.
 This setting is found here: **Project Settings** > **Input System Package** > **Settings** > **Default Deadzone Min/Max**.  
@@ -61,7 +61,7 @@ Each Subscribed method gets the context of the action as parameter, which can be
 The `InputAction.ReadValue<TValue>()` method (`EmbeddedWorkflow.moveAction.ReadValue<Vector2>()`) will give you the current value of the action, where `TValue`(Vector2) is the type of the value you want to read. This allows us to ask for a value rather than waiting for the system to trigger the action.  
 The `InputAction.CallbackContext` is only valid during the callback, so if you want to store the value for later use, you need to read it and store the value inside it in a variable, the option to read values directly from action by passes this concern if you want to get current value in something like `Update` loop.  
 
-See [`EmbeddedWorkflow.cs`](Assets/NewInputSystemLearning/UsingActions/Scripts/EmbeddedWorkflow.cs) for an example of this type of setup.
+See [`EmbeddedWorkflow.cs`](Assets/NewInputSystemLearning/02_UsingActions/Scripts/EmbeddedWorkflow.cs) for an example of this type of setup.
 
 Using Embedded Actions is good for scenarios where you have a fixed input handler and do not need to read inputs from multiple scripts.  
 But if you want multiple scripts to read inputs, or want to have a more modular input system, you can use Input Action Assets.
@@ -110,5 +110,64 @@ Now we can use the generated class in our script to access the action maps and a
 ![img.png](Images/generateInputActionClass.png)  
 We also do not need to worry about updates, as updating the Input Action Asset will automatically update the generated class.
 
-See [`UsingInputActionAssetCode.cs`](Assets/NewInputSystemLearning/UsingInputActionAsset/Scripts/UsingInputActionAssetCode.cs) for an example of this type of setup.
+See [`UsingInputActionAssetCode.cs`](Assets/NewInputSystemLearning/03_UsingInputActionAsset/Scripts/Reference%20Scripts/UsingInputActionAssetCode.cs) for an example of this type of setup.
 
+### Using an Actions Asset and a PlayerInput component  
+We define an Input Action asset as before, but instead of accessing it directly in the script, we use a `PlayerInput` component to the listener gameobject to handle the input.  
+PlayerInput component can be added to any GameObject in the scene, it takes a reference for the Input Action Asset and handles the input for us.    
+We can also choose a default control scheme and default Map (Action Maps) for the PlayerInput component to use or leave it to auto detect.  
+
+`PlayerInput` component has the following properties:
+- **Actions**
+  - drag and drop the Input Action Asset here
+  - Default Scheme (Only shows up if multiple control schemes are defined in the Input Action Asset)
+    - choose the default control scheme to use
+  - Auto Switch (bool) (Only shows up if multiple control schemes are defined in the Input Action Asset)
+    - leave as true to auto detect control scheme based on device being used
+  - Default Map
+    - Action Map to use by default
+- **UI Input Module**
+  - allows us to use the Input Action Asset for UI navigation and interaction
+  - requires an EventSystem in the scene with a UI Input Module component
+  - #incomplete
+- **Camera**
+  - assign a camera to be used for input actions that require a camera reference
+  - for example, raycasting from mouse position to world space
+  - #incomplete
+- **Behavior**
+  - has 4 options:
+    - *Send Messages*
+      - sends messages to the GameObject with PlayerInput component using `GameObject.SendMessage()`
+      - method names must match action names(`Attack`-> `OnAttack()`) with 'On' prefix
+      - if the same scripts are attached to other gameobjects not the GameObject with PlayerInput component, they will not receive the message.
+      - the method will be fired on the attached GameObject and call all of it's components attached to it for any public or private method with the same name.
+      - The called method can get parameters of type `InputValue` to get more info about the value in an input.
+      - see [`InputSendMessage`](Assets/NewInputSystemLearning/04_ActionsWithPlayerInputComponent/Scripts/InputSendMessage.cs) for reference implementation.
+    - *Broadcast Messages*
+      - broadcasts messages to GameObjects in the scene and all of its children using `GameObject.BroadcastMessage()`
+      - method names must match action names(`Attack`-> `OnAttack()`) with 'On' prefix
+      - if the same scripts are attached to other gameobjects not children of the GameObject with PlayerInput component, they will not receive the message.
+      - the method will be fired on the attached GameObject and all of it's child objects and call all of it's components attached to it for any public or private method with the same name.
+      - The called method can get parameters of type `InputValue` to get more info about the value in an input.
+      - see [`InputBroadcastMessage`](Assets/NewInputSystemLearning/04_ActionsWithPlayerInputComponent/Scripts/InputBroadcastMessage.cs) for reference implementation.
+    - *Invoke Unity Events*
+      - allows us to assign methods to actions in the inspector (similar to UI Button OnClick events)
+      - more flexible than Send/Broadcast Messages
+      - InputAction.CallbackContext is passed as parameter to the methods, without this, the method will not be listed in the inspector.
+      - The method names do not need to match action names. Nor does the method need to be attached to the same GameObject as PlayerInput component or it's child componenets.
+      - The called method must have parameter of type `InputAction.CallbackContext` to get more info about the value in an input.
+    - *UI Input Module*
+      - integrates with Unity's UI system
+      - allows us to use the Input Action Asset for UI navigation and interaction
+      - We use reference of `PlayerInput` component in our script to get the input values and handle subscription to actions.
+        - We do not need to enable/disable actions manually, as PlayerInput component handles it for us, but if we are not using the default action map, we need to enable the desired action map manually.
+        - We can change the active action map by calling `PlayerInput.SwitchCurrentActionMap("<action map name>")` (note that this uses a action map name so the name is supposed to be correct).
+        - If we want to enable an action or action map that is not the default one, we need to enable it manually by calling `InputActionMap.Enable()` or `InputAction.Enable()` similar to the use of InputAction Asset.
+        - Here `InputAction`'s can be found by calling `PlayerInput.actions.FindAction("<action name>")` or by using `PlayerInput.actions.["<action name>"]` to get reference to the action.
+      - As the attachment happens in c# class, This is ideal for modular input systems where multiple scripts need to read inputs.
+      - Logically, using this method is similar to using Input Action Assets in script, but with less boilerplate code.
+
+In Summary, to read values:
+- `InputValue`: uses `InputValue(object).Get<datatype>()`
+- `InputAction.CallbackContext`: uses `InputAction.CallbackContext(object).ReadValue<datatype>()`
+- `InputAction`: uses `InputAction(object).ReadValue<datatype>()`

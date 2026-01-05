@@ -88,6 +88,7 @@ When we select an 'action' in the Input Action Asset, we can see its properties 
 In the Action Properpies panel, we can set the action type, control type(except button action type), interactions, processors, etc. which defines what types of bindings will be available to us.  
 By default, we had 'Button' so we get button action type of bindings.
 ![img.png](Images/ActionProperties.png)
+The Pass Through action type allows us to read values directly from the action without any processing. This is useful when we have more than one input type trying to send input for same action, in this case, both inputs are processed as if the same device selected two buttons, without this, the input with larger magnitude will be chosen.
 
 Control Schemes:  
 All key bindings can belong to Control Schemes, which allows us to group bindings for different devices or input sources.  
@@ -149,7 +150,7 @@ We can also choose a default control scheme and default Map (Action Maps) for th
       - if the same scripts are attached to other gameobjects not children of the GameObject with PlayerInput component, they will not receive the message.
       - the method will be fired on the attached GameObject and all of it's child objects and call all of it's components attached to it for any public or private method with the same name.
       - The called method can get parameters of type `InputValue` to get more info about the value in an input.
-      - see [`InputBroadcastMessage`](Assets/NewInputSystemLearning/04_ActionsWithPlayerInputComponent/Scripts/InputBroadcastMessage.cs) for reference implementation.
+      - see [`InputBroadcast`](Assets/NewInputSystemLearning/04_ActionsWithPlayerInputComponent/Scripts/InputBroadcast.cs) for reference implementation.
     - *Invoke Unity Events*
       - allows us to assign methods to actions in the inspector (similar to UI Button OnClick events)
       - more flexible than Send/Broadcast Messages
@@ -171,3 +172,67 @@ In Summary, to read values:
 - `InputValue`: uses `InputValue(object).Get<datatype>()`
 - `InputAction.CallbackContext`: uses `InputAction.CallbackContext(object).ReadValue<datatype>()`
 - `InputAction`: uses `InputAction(object).ReadValue<datatype>()`
+<br/>
+
+
+### Using Input System Package with UI  
+If the project is using the Input System Package alone (**Project Settings** > **Player** > **Other Settings** > **Active Input Handling** = *Input System Package*), Unity will automatically add the `Input System UI Input Module` instead of the `Standalone Input Module` component to the `EventSystem` GameObject when we add a UI component to the scene.  
+The TextMeshPro package allows UI buttons to work exactly as with old `Input Manager` system. But we want the option to use the Input System Package for UI navigation and interaction. For this, we need to do some setup.  
+
+The Idea is that we create an Action Map for UI controls in the Input Action Asset and then assign this asset to the `Input System UI Input Module` component in the EventSystem GameObject. This allows us to use key bindings to interact with the UI elements in the scene.  
+We also do not want UI interaction to be de-selected when we interact(click, drag) outside the UI components or with the game world, so we use the checkbox 'Deselect on Background Click'.  
+We also have the option to change our player active Action Map to UI action map when we open a UI panel, and switch back to the player action map when we close the UI panel. This can be done by multiple ways as covered before, one of which is calling `PlayerInput.SwitchCurrentActionMap("<action map name>")` method in the script when we open/close the UI panel.
+
+
+Now that we know how to use the new input system, we can integrate it with Unity's UI system.  
+- To do this, we need to add an `EventSystem` to the scene if there isn't one already.  
+- Then, we need to add a `Input System UI Input Module` component to the EventSystem GameObject if it is still showing older `Standalone Input Module`. This component will allow us to use the new input system for UI navigation and interaction.    
+- Next, we need to set up the Input Action Asset to include actions for UI navigation and interaction. If we are not sure of the actions, Unity has a default UI action map that we can use as a reference in the default `Input Action` asset created.  
+  - We can create a new Action Map for UI controls or copy the default one from the default Input Action asset.
+  - We set the schemas for the action map to match the devices we want to use for UI navigation (like keyboard and mouse, gamepad, etc.).
+  - We also need to set the referece of the Action Map in our `Player Input` component if we are using one.
+  - We then set our `Input Action` asset as the reference in the `Input System UI Input Module` component of the EventSystem GameObject.
+- We need to assign the Input Action Asset to the `Input System UI Input Module` component in the EventSystem GameObject.    
+- Finally, the app needs a way to switch between the player action map and the UI action map when the UI is opened or closed. This can be done by calling the `SwitchCurrentActionMap` method of the `Player Input` component in the script when we open/close the UI panel. Or it can be active while the gameplay is active.    
+- Now, we can use the Input System Package to navigate and interact with the UI elements in the scene.
+
+UI Action Map Example:
+![UI_Action_Map.png](Images/UI_Action_Map.png)
+The OnClick and other interaaction events of the UI components will work as expected with the new input system, the difference is that we can use the bound keys to trigger the actions as well as the mouse clicks.
+
+- Copied the UI Action Map from default Input Action asset ('Assets/InputSystem_Actions.inputactions') to our custom Input Action asset ('Assets/NewInputSystemLearning/04_ActionsWithPlayerInputComponent/InputActions/InputControlNew.inputactions').  
+- Added schemas for Keyboard&Mouse and Gamepad to the UI Action Map.
+- Assigned the custom `Input Action` asset to the `Input System UI Input Module` component in the EventSystem GameObject.
+  - On Doing this, in the `Input System UI Input Module` component, the `Actions Asset` field is reset if you have not saved your asset. Be careful to save the asset before assigning it here.
+- Assign the 'First Selected' field in the `EventSystem` component to the default selected UI element(GameObject) when the UI is opened. This is the starting point for our UI to navigate and interact with using our custom key bindings.
+- Set the PlayerInput component's 'UI Input Module' to use the EventSystem's `Input System UI Input Module` by drag and drop.
+- For Testing, I added 4 buttons and placed them on 4 edges of the screen,
+  - button 01 is at bottom-right corner
+  - button 02 is at top-left corner
+  - button 03 is at bottom-left corner
+  - button 04 is at top-right corner
+  - All buttons have navigation set to 'Automatic' in the Button component and the selected color is set to a shade of red for better understanding selected button.
+  - This setup is to better understand the navigation using arrow keys or gamepad D-Pad, the button01 is the first selected button when the UI is opened.
+- Disable 'Deselect on Background Click' in the `Input System UI Input Module` component to avoid losing selection when clicking outside UI elements.
+- If we change the Default Map in the PlayerInput component to 'UI', the player cannot control the character until we switch back to the player action map.
+  - When we use keyboard WASD or arrow keys, the button selected is changed accordingly.
+  - Irrespective of the button name or order in hirarchy, the navigation works as per the button positions on screen.
+  - After testing, ensure that the Default Map in the PlayerInput component is set back to 'PlayerBasic' to allow player control.
+- Now, we will add a new Action Map for Toggling the state of UI Action map. This action map will be enabled while our other action maps will change between gameplay action map and UI action map.
+  - Created a new Action Map named 'UI_Toggle' in the Input Action asset.
+  - Added a new action named 'Toggle_UI' of type 'Button' to the action map.
+  - Added bindings for 'Escape' key on keyboard.
+- We now need a way to enable/disable the UI action map when we press the 'Escape' key.
+  - Created a new script named `UIToggleActionMap.cs` and attached it to the Player GameObject which has `PlayerInput` component attached.
+  - In the script, we get reference to the PlayerInput component and the 'UI_Toggle' action map using `FindActionMap` and `FindAction`.
+  - We subscribe to the 'Toggle_UI' action's 'performed' event to toggle between UI and Player action maps.
+  - In the event handler, we check the current action map, 
+    - if we are not in the UI action map, save current action map in an action map variable(`savedActionMap`) and switch to the UI action map(`uiActionMap`). 
+    - If we are in the UI action map, we switch back to the saved action map and remove the reference of the action map.
+    - This allows us to return to the previous action map when we close the UI, as well as to use any action map without keeping multiple references just for UI.
+- Test it
+- I had an **error** where the UI action map was not navigating properly, the selected UI button was not changing on WASD or arrow key press.
+  - After checking, I found that the `Input System UI Input Module` component's `Actions Asset` mapping for `Move` field was selecting `PlayerBasic/Move` instead of `UI/Navigate`. So make sure all keys are mapped properly.\
+![img.png](Images/ui_mapping.png)
+
+See [`UIToggleActionMap.cs`](Assets/NewInputSystemLearning/04_ActionsWithPlayerInputComponent/Scripts/UIToggleActionMap.cs) for reference implementation in [InvokeCSharpEvents](Assets/NewInputSystemLearning/04_ActionsWithPlayerInputComponent/Scenes/InvokeCSharpEvents.unity) scene.
